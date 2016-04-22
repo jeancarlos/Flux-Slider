@@ -41,7 +41,9 @@ window.flux = {
 			captions: false,
 			width: null,
 			height: null,
-			onTransitionEnd: null
+			onTransitionEnd: null,
+			imgList: null,
+			focus: null
 		}, opts);
 
 		// Set the height/width if given [EXPERIMENTAL!]
@@ -108,40 +110,89 @@ window.flux = {
 			'left': '0px'
 		});
 		
-		// Get a list of the images to use
-		this.element.find('img, a img').each(function(index, found_img){
-			var imgClone = found_img.cloneNode(false),
-				link = $(found_img).parent();
+		if(typeof _this.options.imgList !== 'object'){
+			// Get a list of the images to use
+			this.element.find('img, a img').each(function(index, found_img){
+				var imgClone = found_img.cloneNode(false),
+					link = $(found_img).parent();
 
-			// If this img is directly inside a link then save the link for later use
-			if(link.is('a'))
-				$(imgClone).data('href', link.attr('href'));
+				// If this img is directly inside a link then save the link for later use
+				if(link.is('a'))
+					$(imgClone).data('href', link.attr('href'));
 
-			_this.images.push(imgClone);
+				_this.images.push(imgClone);
 
-			// Remove the images from the DOM
-			$(found_img).remove();
-		});
-		
-		// Load the images afterwards as IE seems to load images synchronously
-		for(var i=0; i<this.images.length; i++) {
-			var image = new Image();
-			image.onload = function() {
-				_this.imageLoadedCount++;
+				// Remove the images from the DOM
+				$(found_img).remove();
 
-				_this.width  = _this.width 	? _this.width  : this.width;
-				_this.height = _this.height ? _this.height : this.height;
+			});
 
-				if(_this.imageLoadedCount >= _this.images.length)
-				{
-					_this.finishedLoading();
-					_this.setupImages();
-				}
-			};
+			// Load the images afterwards as IE seems to load images synchronously
+			for(var i=0; i<this.images.length; i++) {
+				var image = new Image();
+				image.onload = function() {
+					_this.imageLoadedCount++;
 
-			// Load the image to ensure its cached by the browser
-			image.src = this.images[i].src;
+					this.setAttribute('width', this.width);
+					this.setAttribute('height', this.height);
+
+					_this.width  = _this.width 	? _this.width  : _this.element.width();
+					_this.height = _this.height ? _this.height : Math.floor(tthis.height * (_this.element.width()/this.width));
+
+					if(_this.imageLoadedCount >= _this.images.length)
+					{
+						_this.finishedLoading();
+						_this.setupImages();
+					}
+				};
+
+				// Load the image to ensure its cached by the browser
+				image.src = this.images[i].src;
+			}
+		} else {
+
+			//Get option "imgList" load images dinamicaly
+			for (var i = 0; i < _this.options.imgList.length; i++) {
+				var image = new Image();
+				image.onload = function() {
+					_this.imageLoadedCount++;
+
+					this.setAttribute('width', this.width);
+					this.setAttribute('height', this.height);
+
+					_this.width  = _this.width 	? _this.width  : _this.element.width();
+					_this.height = _this.height ? _this.height : Math.floor(this.height * (_this.element.width()/this.width));
+
+
+					if(_this.imageLoadedCount >= _this.options.imgList.length)
+					{
+						_this.finishedLoading();
+						_this.setupImages();
+					}
+				};
+
+				image.src = _this.options.imgList[i];
+				_this.images.push(image);
+			}
 		}
+
+		function resize(){
+			_this.width  = _this.element.width();
+			_this.height = Math.floor(_this.images[0].height * (_this.element.width()/_this.images[0].width));
+
+			_this.finishedLoading();
+			_this.setupImages();
+		}
+
+
+		if(window.addEventListener){
+			window.addEventListener("resize", resize, false);
+			window.addEventListener("orientationchange", resize, false);
+		} else if (elem.attachEvent) { //for IE8 and lower
+			window.onorientationchange = resize();
+			window.onresize = resize();
+		}
+
 		
 		// Catch when a transition has finished
 		this.element.bind('fluxTransitionEnd', function(event, data) {
@@ -183,7 +234,6 @@ window.flux = {
 			var _this = this;
 			this.playing = true;
 			this.interval = setInterval(function() {
-				console.log('play');
 				_this.transition();
 			}, this.options.delay);
 		},
@@ -227,8 +277,7 @@ window.flux = {
 			this.imageContainer.removeClass('loading');
 
 			// Should we setup a pagination view?
-			if(this.options.pagination)
-			{
+			if(this.options.pagination && this.container.find('.pagination').length < 1){
 				// TODO: Attach to touch events if appropriate
 				this.pagination = $('<ul class="pagination"></ul>').css({
 					margin: '0px',
@@ -275,9 +324,9 @@ window.flux = {
 				width: this.width+'px',
 				height: this.height+(this.options.pagination?this.pagination.height():0)+'px'
 			});
-			
+
 			// Should we add prev/next controls?
-			if(this.options.controls)
+			if(this.options.controls && this.surface.find('.flux-controls-nav').length < 1)
 			{
 				var css = {
 					padding: '4px 10px 10px',
@@ -291,15 +340,16 @@ window.flux = {
 					position: 'absolute',
 					'z-index': 2000
 				};
+
 				
-				this.nextButton = $('<a href="#">»</a>').css(css).css3({
+				this.nextButton = $('<a class="flux-controls-nav" href="#">»</a>').css(css).css3({
 					'border-radius': '4px'
 				}).appendTo(this.surface).bind('click', function(event){
 					event.preventDefault();
 					_this.next();
 				});
 				
-				this.prevButton = $('<a href="#">«</a>').css(css).css3({
+				this.prevButton = $('<a class="flux-controls-nav href="#">«</a>').css(css).css3({
 					'border-radius': '4px'
 				}).appendTo(this.surface).bind('click', function(event){
 					event.preventDefault();
@@ -345,11 +395,30 @@ window.flux = {
 		},
 		setupImages: function() {
 			var img1 = this.getImage(this.currentImageIndex),
+				aheigthC = Math.floor(this.getImage(this.currentImageIndex).getAttribute('height') * (this.width/this.getImage(this.currentImageIndex).getAttribute('width'))),
+				aheigthN = Math.floor(this.getImage(this.nextImageIndex).getAttribute('height') * (this.width/this.getImage(this.nextImageIndex).getAttribute('width'))),
+				bgsizeC = this.width+'px auto',
+				bgsizeN = this.width+'px auto',
+				orImgC = true, //landscape?
+				orImgN = true; //landscape?
 				css1 = {
 					'background-image': 'url("'+img1.src+'")',
+					'background-position': '-0px -0px',
 					'z-index': 101,
 					'cursor': 'auto'
-				};
+				}
+
+
+			if(this.height > aheigthC) //Portrait?
+			{
+				orImgC = false;
+				bgsizeC = 'auto '+this.height+'px';
+			}
+			if(this.height > aheigthN) //Portrait?
+			{
+				orImgN = false;
+				bgsizeN = 'auto '+this.height+'px';
+			}
 
 			// Does this image have an associated link?
 			if($(img1).data('href'))
@@ -364,11 +433,17 @@ window.flux = {
 				this.image1.data('href', null);
 			}
 
-			this.image1.css(css1).children().remove();
+			
+
+			this.image1.css(css1).css3({
+				'background-size': bgsizeC,orImgN
+			}).children().remove();
 
 			this.image2.css({
 				'background-image': 'url("'+this.getImage(this.nextImageIndex).src+'")',
 				'z-index': 100
+			}).css3({
+				'background-size': bgsizeN,
 			}).show();
 
 			if(this.options.pagination && this.pagination)
@@ -781,10 +856,17 @@ window.flux = {
 			rows: 1,
 			delayBetweenBars: 40,
 			renderTile: function(elem, colIndex, rowIndex, colWidth, rowHeight, leftOffset, topOffset) {
+				var aheigth = Math.floor(this.slider.getImage(this.slider.currentImageIndex).getAttribute('height') * (this.slider.width/this.slider.getImage(this.slider.currentImageIndex).getAttribute('width'))),
+				bgsize = this.slider.width+'px auto';
+
+				if(this.slider.height > aheigth) bgsize = 'auto '+this.slider.height+'px';
+
+				//console.log(this.slider)
 				$(elem).css({
 					'background-image': this.slider.image1.css('background-image'),
 					'background-position': '-'+leftOffset+'px 0px'
 				}).css3({
+					'background-size': bgsize,
 					'transition-duration': '400ms',
 					'transition-timing-function': 'ease-in',
 					'transition-property': 'all',
@@ -825,6 +907,14 @@ window.flux = {
 			delayBetweenBars: 150,
 			perspective: 1000,
 			renderTile: function(elem, colIndex, rowIndex, colWidth, rowHeight, leftOffset, topOffset) {
+				var aheigthC = Math.floor(this.slider.getImage(this.slider.currentImageIndex).getAttribute('height') * (this.slider.width/this.slider.getImage(this.slider.currentImageIndex).getAttribute('width'))),
+				aheigthN = Math.floor(this.slider.getImage(this.slider.nextImageIndex).getAttribute('height') * (this.slider.width/this.slider.getImage(this.slider.nextImageIndex).getAttribute('width'))),
+				bgsizeC = this.slider.width+'px auto',
+				bgsizeN = this.slider.width+'px auto';
+
+				if(this.slider.height > aheigthC) bgsizeC = 'auto '+this.slider.height+'px';
+				if(this.slider.height > aheigthN) bgsizeN = 'auto '+this.slider.height+'px';
+
 				var bar = $('<div class="bar-'+colIndex+'"></div>').css({
 					width: colWidth+'px',
 					height: '100%',
@@ -837,12 +927,14 @@ window.flux = {
 					'background-position': '-'+leftOffset+'px 0px',
 					'background-repeat': 'no-repeat'
 				}).css3({
+					'background-size': bgsizeC,
 					'backface-visibility': 'hidden'
 				}),
 
 				bar2 = $(bar.get(0).cloneNode(false)).css({
 					'background-image': this.slider.image2.css('background-image')
 				}).css3({
+					'background-size': bgsizeN,
 					'transform': flux.browser.rotateX(90) + ' ' + flux.browser.translate(0, -rowHeight/2, rowHeight/2)
 				}),
 
@@ -993,6 +1085,7 @@ window.flux = {
 					'background-image': this.slider.image1.css('background-image'),
 					'background-position': '-'+leftOffset+'px -'+topOffset+'px'
 				}).css3({
+					'background-size': this.slider.width+'px auto',
 					'transition-duration': '350ms',
 					'transition-timing-function': 'ease-in',
 					'transition-property': 'all',
@@ -1046,6 +1139,7 @@ window.flux = {
 					'background-image': this.slider.image1.css('background-image'),
 					'background-position': '-'+leftOffset+'px -'+topOffset+'px'
 				}).css3({
+					'background-size': this.slider.width+'px auto',
 					'transition-duration': '350ms',
 					'transition-timing-function': 'ease-in',
 					'transition-property': 'all',
@@ -1108,6 +1202,7 @@ window.flux = {
 						'background-image': this.slider.image1.css('background-image'),
 						'background-position': 'center center'
 					}).css3({
+						'background-size': this.slider.width+'px auto',
 						'border-radius': thisBlockSize+'px',
 						'transition-duration': '800ms',
 						'transition-timing-function': 'linear',
@@ -1194,6 +1289,7 @@ window.flux = {
 				var currentFace = $('<div class="face current"></div>').css($.extend(css, {
 					background: this.slider.image1.css('background-image')
 				})).css3({
+					'background-size': this.slider.width+'px auto',
 					'backface-visibility': 'hidden'
 				});
 
@@ -1202,6 +1298,7 @@ window.flux = {
 				var nextFace = $('<div class="face next"></div>').css($.extend(css, {
 					background: this.slider.image2.css('background-image')
 				})).css3({
+					'background-size': this.slider.width+'px auto',
 					'transform' : this.options.transitionStrings.call(this, this.options.direction, 'nextFace'),
 					'backface-visibility': 'hidden'
 				});
@@ -1282,6 +1379,7 @@ window.flux = {
 					'background-repeat': 'no-repeat',
 					'-moz-transform': 'translateZ(1px)'
 				}).css3({
+					'background-size': this.slider.width+'px auto',
 					'backface-visibility': 'hidden'
 				});
 
@@ -1289,6 +1387,7 @@ window.flux = {
 					'background-image': this.slider.image2.css('background-image')
 					//'z-index': 190 // Removed to make compatible with FF10 (Chrome bug seems to have been fixed)
 				}).css3({
+					'background-size': this.slider.width+'px auto',
 					'transform': flux.browser.rotateY(180),
 					'backface-visibility': 'hidden'
 				});
@@ -1364,6 +1463,7 @@ window.flux = {
 						left: '0',
 						'-moz-transform': 'translateZ(1px)'
 					}).css3({
+						'background-size': this.slider.width+'px auto',
 						'backface-visibility': 'hidden'
 					}),
 
@@ -1376,6 +1476,7 @@ window.flux = {
 						top: '0',
 						left: '0'
 					}).css3({
+						'background-size': this.slider.width+'px auto',
 						transform: flux.browser.rotateY(180),
 						'backface-visibility': 'hidden'
 					}),
@@ -1389,6 +1490,8 @@ window.flux = {
 					'background-image': this.slider.image1.css('background-image'),
 					'background-position': (this.options.direction == 'left' ? 0 : '-'+(this.slider.image1.width()/2))+'px 0',
 					'z-index':100
+				}).css3({
+					'background-size': this.slider.width+'px auto',
 				}),
 
 				overlay = $('<div class="overlay"></div>').css({
@@ -1452,6 +1555,7 @@ window.flux = {
 					left: '0px',
 					background: this.slider[this.options.direction == 'left' ? 'image1' : 'image2'].css('background-image')	
 				}).css3({
+					'background-size': this.slider.width+'px auto',
 					'backface-visibility': 'hidden'
 				}),
 
@@ -1463,6 +1567,7 @@ window.flux = {
 					left: width+'px',
 					background: this.slider[this.options.direction == 'left' ? 'image2' : 'image1'].css('background-image')
 				}).css3({
+					'background-size': this.slider.width+'px auto',
 					'backface-visibility': 'hidden'
 				});
 
@@ -1512,6 +1617,7 @@ window.flux = {
 					height: '100%',
 					'background-image': this.slider.image1.css('background-image')
 				}).css3({
+					'background-size': this.slider.width+'px auto',
 					'transition-duration': '1600ms',
 					'transition-timing-function': 'ease-in',
 					'transition-property': 'all',
@@ -1554,6 +1660,7 @@ window.flux = {
 					height: '100%',
 					'background-image': this.slider.image1.css('background-image')	
 				}).css3({
+					'background-size': this.slider.width+'px auto',
 					'transition-duration': '600ms',
 					'transition-timing-function': 'ease-in',
 					'transition-property': 'opacity'

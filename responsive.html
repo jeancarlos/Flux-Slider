@@ -21,7 +21,7 @@
 					alert("Flux Slider requires a browser that supports CSS3 transitions");
 					
 				window.f = new flux.slider('#slider', {
-					pagination: true,
+					pagination: false,
 					transitions: ['bars3d'],
 					//autoplay: false,
 					imgList: [
@@ -29,19 +29,13 @@
 						"img/the-martian.jpg",
 						"img/captain-america.jpg",
 						"img/voldemort.jpg"
-					],
-					focus:[ //The same order as imgList
-						[0,0], //Percentages - left to right, top to bottom
-						[0,25],
-						[25,0],
-						[0,22]
 					]
 				});
 			});
 		</script>
 	</head>
 	<body>
-		<section class="container">
+		<section class="container fullwidth">
 			<h1><span class="dynamic">Dynamic</span> <span class="flux">Flux</span> <span class="slider">Slider</span></h1>
 			<h2>Hardware accelerated image transitions using CSS3.</h2>
 			<div id="slider">
