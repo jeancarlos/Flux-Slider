@@ -1,7 +1,7 @@
 # Dynamic Flux Slider
 Dynamic Flux Slider is a fork of [Flux slider](https://github.com/joelambert/Flux-Slider).
 
-## So what is the differences?
+## So what are the differences?
 
 - Dynamic load from array
 - Responsive width
@@ -13,12 +13,12 @@ If not for the new stuff, all remain the same.
 
 	window.f = new flux.slider('#slider', {
 		imgList: [
-			"img/avatar.jpg", //If width and height isn't defined, the script use the width of the selector and relative height of the first image
+			"img/avatar.jpg", //If width and height isn't defined, the script use the width of the selector and the relative height of the first image.
 			"img/the-martian.jpg",
 			"img/captain-america.jpg",
 			"img/voldemort.jpg"
 		],
-		focus:[ //The same order as imgList
+		focus:[ //The image is fill the container, you can choose the focus point.
 			[0,0], //Percentages - left to right, top to bottom
 			[0,50],
 			[46,0],
